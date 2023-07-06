@@ -1,26 +1,39 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const cors = require('cors');
+const bcrypt = require('bcrypt');
 
 const app = express();
-const cors = require('cors');
 const PORT = process.env.port || 3001;
 
 app.use(express.json());
 app.use(cors());
 
-const dummyUser = {
-    username: 'user',
-    password: 'password',
-    name: 'John Doe',
-};
-
 const SECRET_KEY = 'mysecretkey';
 
-app.post('/api/authenticate', (req, res) => {
+let users = []; // database simulato in memoria
+
+app.post('/api/register', async (req, res) => {
+    const { username, password, name } = req.body;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    users.push({
+        username,
+        password: hashedPassword,
+        name,
+    });
+
+    res.status(201).json({ message: 'User registered' });
+});
+
+app.post('/api/authenticate', async (req, res) => {
     const { username, password } = req.body;
 
-    if (username === dummyUser.username && password === dummyUser.password) {
-        const token = jwt.sign({ name: dummyUser.name }, SECRET_KEY, {
+    const user = users.find(user => user.username === username);
+    
+    if (user && await bcrypt.compare(password, user.password)) {
+        const token = jwt.sign({ name: user.name }, SECRET_KEY, {
         expiresIn: "1h",
     });
         res.json({ token });
